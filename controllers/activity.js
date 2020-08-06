@@ -59,6 +59,7 @@ exports.retrieveWeb = async (req, res) => {
       }
       creator_ref = creator_ref.toObject();
       if (type === 1) {
+        delete creator_ref.store_admin_ref.local;
         creator_ref = {
           ...creator_ref.store_admin_ref,
           local: {
