@@ -12,13 +12,13 @@ exports.retrieve = async (req, res) => {
       $or: [
         {
           identifier: req.user.phone_number,
-          "local.user_role": req.user.user_role
+          "local.user_role": req.user.user_role,
         },
         {
           "assistants.phone_number": req.user.phone_number,
-          "assistants.user_role": req.user.user_role
-        }
-      ]
+          "assistants.user_role": req.user.user_role,
+        },
+      ],
     });
     if (!user) {
       return res.status(404).json({
@@ -26,18 +26,18 @@ exports.retrieve = async (req, res) => {
         message: "User not found",
         data: {
           statusCode: 404,
-          message: "User not found"
-        }
+          message: "User not found",
+        },
       });
     }
     let activity;
     if (req.user.user_role == "store_assistant") {
       activity = await Activity.find({
-        store_assistant_ref: req.user._id
+        store_assistant_ref: req.user._id,
       }).sort({ time: 1 });
     } else {
       activity = await Activity.find({
-        store_admin_ref: req.user._id
+        store_admin_ref: req.user._id,
       }).sort({ time: 1 });
     }
     if (!activity) {
@@ -45,14 +45,14 @@ exports.retrieve = async (req, res) => {
         success: false,
         message: "No activity",
         error: {
-          statusCode: 404
-        }
+          statusCode: 404,
+        },
       });
     } else {
       return res.status(200).json({
         success: true,
         message: "Activity retrieved successfully.",
-        data: activity
+        data: activity,
       });
     }
   } catch (error) {
@@ -68,20 +68,50 @@ exports.populate = async (req, res) => {
       const all = await Activity.find({
         $or: [
           {
-            store_assistant_ref: req.user._id
+            store_assistant_ref: req.user._id,
           },
           {
-            store_admin_ref: req.user._id
-          }
-        ]
+            store_admin_ref: req.user._id,
+          },
+        ],
       }).sort({ time: 1 });
       return res.status(200).json({
         success: true,
         message: "Logs synced successfully.",
-        data: all
+        data: all,
       });
     }
   } catch (error) {
     return errorHandler(error, res);
   }
-}
+};
+
+exports.retrieveWeb = async (req, res) => {
+  try {
+    let data;
+    if (req.user.user_role === "super_admin") {
+      data = await Activity.find({})
+        .sort({ createdAt: -1 })
+        .populate({ path: "store_assistant_ref store_admin_ref" })
+        .exec();
+    } else {
+      data = await Activity.find({
+        $or: [
+          { store_assistant_ref: req.user._id },
+          { store_admin_ref: req.user._id },
+        ],
+      })
+        .sort({ createdAt: -1 })
+        .populate({ path: "store_assistant_ref store_admin_ref" })
+        .exec();
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Activity retrieved successfully",
+      data,
+    });
+  } catch (error) {
+    errorHandler(error, res);
+  }
+};
